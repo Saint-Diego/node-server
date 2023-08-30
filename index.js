@@ -2,48 +2,136 @@ const readlineSync = require("readline-sync");
 const { v4: uuid4 } = require("uuid");
 
 const listaTareas = [];
+const CARACTERES = ["|", "/", "―", "\\"];
+let idInterval;
+const TIME = 2000;
+const DELAY = 100;
 const COMPLETE = "completado";
 const NOT_COMPLETE = "no completado";
 
-const agregarTarea = (tarea) => {
-  tarea = { id: uuid4(), ...tarea, estado: NOT_COMPLETE };
-  listaTareas.push(tarea);
-  console.log(`Tarea agregada correctamente\n`);
+const agregarTarea = (req) => {
+  return new Promise((resolve) => {
+    req.body = { id: uuid4(), ...req.body, estado: NOT_COMPLETE };
+    listaTareas.push(req.body);
+    mostrarCargando("Guardando");
+    setTimeout(() => {
+      clearInterval(idInterval);
+      resolve(`Tarea agregada correctamente\n`);
+    }, TIME);
+  });
 };
 
-const actualizarTarea = (index, data) => {
-  listaTareas[index] = { ...listaTareas[index], ...data };
-  console.log(`Buen trabajo, tarea completada\n`);
+const actualizarTarea = (req) => {
+  const { index } = req.params;
+  return new Promise((resolve) => {
+    listaTareas[index] = { ...listaTareas[index], ...req.body };
+    mostrarCargando("Actualizando");
+    setTimeout(() => {
+      clearInterval(idInterval);
+      resolve(`Buen trabajo, tarea completada\n`);
+    }, TIME);
+  });
 };
 
-const eliminarTarea = (index) => {
-  listaTareas.splice(index, 1);
-  console.log(`Tarea eliminada correctamente\n`);
+const eliminarTarea = (req) => {
+  const { index } = req.params;
+  return new Promise((resolve) => {
+    listaTareas.splice(index, 1);
+    mostrarCargando("Eliminando");
+    setTimeout(() => {
+      clearInterval(idInterval);
+      resolve(`Tarea eliminada correctamente\n`);
+    }, TIME);
+  });
 };
 
-const buscarTareaPorId = (id) => {
-  return listaTareas.find((tarea, index) => {
-    if (tarea.id === id) {
-      tarea.index = index;
-      return tarea;
-    }
-    return false;
+const buscarTareaPorId = (req) => {
+  const { id } = req.params;
+  return new Promise((resolve, reject) => {
+    const tarea = listaTareas.find((tarea, index) => {
+      if (tarea.id === id) {
+        tarea.index = index;
+        return tarea;
+      }
+      return false;
+    });
+    mostrarCargando("Consultando");
+    setTimeout(() => {
+      clearInterval(idInterval);
+      if (!tarea) reject(`Tarea con ID ${id} no existe\n`);
+      resolve(tarea);
+    }, TIME);
   });
 };
 
 const listarTareas = () => {
-  if (listaTareas.length > 0) {
-    for (let i = 0; i < listaTareas.length; i++) {
-      const { id, titulo, descripcion, estado } = listaTareas[i];
+  return new Promise((resolve, reject) => {
+    const data = [];
+    for (const tarea of listaTareas) {
+      data.push(tarea);
+    }
+    mostrarCargando("Cargando tareas");
+    setTimeout(() => {
+      clearInterval(idInterval);
+      if (listaTareas.length === 0) reject("¡Upps!, No hay tareas guardadas");
+      resolve(data);
+    }, TIME);
+  });
+};
+
+/** Funciones asíncronas */
+const postTask = async (tarea) => {
+  try {
+    console.log(await agregarTarea({ body: tarea }));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const putTask = async (index, data) => {
+  try {
+    console.log(await actualizarTarea({ params: { index }, body: data }));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const deleteTask = async (index) => {
+  try {
+    console.log(await eliminarTarea({ params: { index } }));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getTasks = async () => {
+  try {
+    const tasks = await listarTareas();
+    for (let i = 0; i < tasks.length; i++) {
       console.log(
-        `${
-          i + 1
-        }. ID: ${id} - Titulo: ${titulo} - Descripción: ${descripcion} - Estado: ${estado}`
+        `${i + 1}. Id: ${tasks[i].id}, Titulo: ${
+          tasks[i].titulo
+        }, Descripción: ${tasks[i].descripcion}, Estado: ${tasks[i].estado}`
       );
     }
-  } else console.log("¡Upps!, No hay tareas guardadas");
-  console.log("");
+    console.log("");
+  } catch (error) {
+    console.log(error);
+  }
 };
+
+const getTaskById = async (id) => {
+  return await buscarTareaPorId({ params: { id } });
+};
+
+function mostrarCargando(text) {
+  let indice = 0;
+
+  idInterval = setInterval(() => {
+    process.stdout.write(`${text}... ${CARACTERES[indice]} \r`);
+    indice = (indice + 1) % CARACTERES.length;
+  }, DELAY);
+}
 
 function mostrarMenu() {
   console.log(`--------MENÚ--------
@@ -54,7 +142,7 @@ function mostrarMenu() {
 [5] Salir...........\n`);
 }
 
-function main() {
+async function main() {
   let opcion;
   let id;
   let titulo;
@@ -68,44 +156,61 @@ function main() {
     console.log("");
     switch (opcion) {
       case 1:
-        titulo = readlineSync.question("Digite el titulo: ");
-        descripcion = readlineSync.question("Digite una breve descripcion: ");
-        agregarTarea({ titulo, descripcion });
+        titulo = readlineSync.question("Ingrese el titulo: ");
+        while (!titulo) {
+          console.log("Error, El campo título no puede ser vacío");
+          titulo = readlineSync.question("Por favor ingrese un titulo: ");
+        }
+        descripcion = readlineSync.question("Escriba una breve descripcion: ");
+        while (!descripcion) {
+          console.log("Error, El campo descripción no puede ser vacío");
+          descripcion = readlineSync.question(
+            "Por favor escriba una breve descripcion: "
+          );
+        }
+        await postTask({ titulo, descripcion });
         break;
 
       case 2:
         id = readlineSync.question("Digite id de la tarea a completar: ");
-        tarea = buscarTareaPorId(id);
-        if (tarea) {
+        try {
+          tarea = await getTaskById(id);
           console.log(`Estado actual de la tarea es "${tarea.estado}"`);
           estado = tarea.estado === COMPLETE ? NOT_COMPLETE : COMPLETE;
           answer = readlineSync.question(
-            `Quieres cambiar el estado de la tarea a "${estado}"? `,
+            `Quieres cambiar el estado de la tarea a "${estado}" [S o N]? `,
             {
-              trueValue: ["s", "si", "sip"],
-              falseValue: ["n", "no", "nop"],
+              trueValue: ["s", "si", "sip", "y", "yes", "yeah", "yep"],
+              falseValue: ["n", "no", "nop", "not", "nah", "nope"],
             }
           );
-          if (answer) actualizarTarea(tarea.index, { estado });
+          if (answer) await putTask(tarea.index, { estado });
           else console.log("");
-        } else console.log(`ID ${id} no existe\n`);
+        } catch (error) {
+          console.log(error);
+        }
         break;
 
       case 3:
         id = readlineSync.question("Digite id de la tarea a eliminar: ");
-        tarea = buscarTareaPorId(id);
-        if (tarea) {
-          answer = readlineSync.question("Esta seguro de eliminar la tarea? ", {
-            trueValue: ["s", "si", "sip"],
-            falseValue: ["n", "no", "nop"],
-          });
-          if (answer) eliminarTarea(tarea.index);
+        try {
+          tarea = await getTaskById(id);
+          answer = readlineSync.question(
+            "Esta seguro de eliminar la tarea [S o N]? ",
+            {
+              trueValue: ["s", "si", "sip", "y", "yes", "yeah", "yep"],
+              falseValue: ["n", "no", "nop", "not", "nah", "nope"],
+            }
+          );
+          if (answer) await deleteTask(tarea.index);
           else console.log("");
-        } else console.log(`ID ${id} no existe\n`);
+        } catch (error) {
+          console.log(error);
+        }
         break;
 
       case 4:
-        listarTareas();
+        await getTasks();
         break;
 
       case 5:
