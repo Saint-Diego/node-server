@@ -2,6 +2,8 @@ const readlineSync = require("readline-sync");
 const { v4: uuid4 } = require("uuid");
 
 const listaTareas = [];
+const TRUE_VALUE = ["s", "si", "sip", "y", "yes", "yeah", "yep"];
+const FALSE_VALUE = ["n", "no", "nop", "not", "nah", "nope"];
 const COMPLETE = "completado";
 const NOT_COMPLETE = "no completado";
 
@@ -36,9 +38,9 @@ const listarTareas = () => {
     for (let i = 0; i < listaTareas.length; i++) {
       const { id, titulo, descripcion, estado } = listaTareas[i];
       console.log(
-        `${
-          i + 1
-        }. ID: ${id} - Titulo: ${titulo} - Descripción: ${descripcion} - Estado: ${estado}`
+        `${i + 1}. Id: ${tasks[i].id}, Titulo: ${
+          tasks[i].titulo
+        }, Descripción: ${tasks[i].descripcion}, Estado: ${tasks[i].estado}`
       );
     }
   } else console.log("¡Upps!, No hay tareas guardadas");
@@ -69,7 +71,17 @@ function main() {
     switch (opcion) {
       case 1:
         titulo = readlineSync.question("Digite el titulo: ");
-        descripcion = readlineSync.question("Digite una breve descripcion: ");
+        while (!titulo) {
+          console.log("Error, El campo título no puede ser vacío");
+          titulo = readlineSync.question("Por favor ingrese un titulo: ");
+        }
+        descripcion = readlineSync.question("Escriba una breve descripcion: ");
+        while (!descripcion) {
+          console.log("Error, El campo descripción no puede ser vacío");
+          descripcion = readlineSync.question(
+            "Por favor escriba una breve descripcion: "
+          );
+        }
         agregarTarea({ titulo, descripcion });
         break;
 
@@ -80,10 +92,10 @@ function main() {
           console.log(`Estado actual de la tarea es "${tarea.estado}"`);
           estado = tarea.estado === COMPLETE ? NOT_COMPLETE : COMPLETE;
           answer = readlineSync.question(
-            `Quieres cambiar el estado de la tarea a "${estado}"? `,
+            `Quieres cambiar el estado de la tarea a "${estado}" [S o N]? `,
             {
-              trueValue: ["s", "si", "sip"],
-              falseValue: ["n", "no", "nop"],
+              trueValue: TRUE_VALUE,
+              falseValue: FALSE_VALUE,
             }
           );
           if (answer) actualizarTarea(tarea.index, { estado });
@@ -95,9 +107,9 @@ function main() {
         id = readlineSync.question("Digite id de la tarea a eliminar: ");
         tarea = buscarTareaPorId(id);
         if (tarea) {
-          answer = readlineSync.question("Esta seguro de eliminar la tarea? ", {
-            trueValue: ["s", "si", "sip"],
-            falseValue: ["n", "no", "nop"],
+          answer = readlineSync.question("Esta seguro de eliminar la tarea [S o N]? ", {
+            trueValue: TRUE_VALUE,
+            falseValue: FALSE_VALUE,
           });
           if (answer) eliminarTarea(tarea.index);
           else console.log("");
