@@ -15,7 +15,7 @@ const agregarTarea = (tarea) => {
 
 const actualizarTarea = (index, data) => {
   listaTareas[index] = { ...listaTareas[index], ...data };
-  console.log(`Buen trabajo, tarea completada\n`);
+  console.log(`Buen trabajo, estado actualizado correctamente\n`);
 };
 
 const eliminarTarea = (index) => {
@@ -48,12 +48,12 @@ const listarTareas = () => {
 };
 
 function mostrarMenu() {
-  console.log(`--------MENÚ--------
-[1] Agregar tarea...
-[2] Completar tarea.
-[3] Eliminar tarea..
-[4] Mostrar tareas..
-[5] Salir...........\n`);
+  console.log(`-----------MENÚ----------
+[1] Agregar tarea........
+[2] Cambiar estado tarea.
+[3] Eliminar tarea.......
+[4] Mostrar tareas.......
+[5] Salir................\n`);
 }
 
 function main() {
@@ -86,7 +86,7 @@ function main() {
         break;
 
       case 2:
-        id = readlineSync.question("Digite id de la tarea a completar: ");
+        id = readlineSync.question("Digite id de la tarea a cambiar: ");
         tarea = buscarTareaPorId(id);
         if (tarea) {
           console.log(`Estado actual de la tarea es "${tarea.estado}"`);
