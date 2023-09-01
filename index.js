@@ -2,6 +2,8 @@ const readlineSync = require("readline-sync");
 const { v4: uuid4 } = require("uuid");
 
 const listaTareas = [];
+const TRUE_VALUE = ["s", "si", "sip", "y", "yes", "yeah", "yep"];
+const FALSE_VALUE = ["n", "no", "nop", "not", "nah", "nope"];
 const CARACTERES = ["|", "/", "―", "\\"];
 let idInterval;
 const TIME = 2000;
@@ -28,7 +30,7 @@ const actualizarTarea = (req) => {
     mostrarCargando("Actualizando");
     setTimeout(() => {
       clearInterval(idInterval);
-      resolve(`Buen trabajo, tarea completada\n`);
+      resolve(`Buen trabajo, estado actualizado correctamente\n`);
     }, TIME);
   });
 };
@@ -66,15 +68,11 @@ const buscarTareaPorId = (req) => {
 
 const listarTareas = () => {
   return new Promise((resolve, reject) => {
-    const data = [];
-    for (const tarea of listaTareas) {
-      data.push(tarea);
-    }
     mostrarCargando("Cargando tareas");
     setTimeout(() => {
       clearInterval(idInterval);
-      if (listaTareas.length === 0) reject("¡Upps!, No hay tareas guardadas");
-      resolve(data);
+      if (listaTareas.length === 0) reject("¡Upps!, No hay tareas guardadas\n");
+      resolve(listaTareas);
     }, TIME);
   });
 };
@@ -107,13 +105,13 @@ const deleteTask = async (index) => {
 const getTasks = async () => {
   try {
     const tasks = await listarTareas();
-    for (let i = 0; i < tasks.length; i++) {
+    tasks.map((task, i) =>
       console.log(
-        `${i + 1}. Id: ${tasks[i].id}, Titulo: ${
-          tasks[i].titulo
-        }, Descripción: ${tasks[i].descripcion}, Estado: ${tasks[i].estado}`
-      );
-    }
+        `${i + 1}. Id: ${task.id}, Titulo: ${task.titulo}, Descripción: ${
+          task.descripcion
+        }, Estado: ${task.estado}`
+      )
+    );
     console.log("");
   } catch (error) {
     console.log(error);
@@ -134,15 +132,17 @@ function mostrarCargando(text) {
 }
 
 function mostrarMenu() {
-  console.log(`--------MENÚ--------
-[1] Agregar tarea...
-[2] Completar tarea.
-[3] Eliminar tarea..
-[4] Mostrar tareas..
-[5] Salir...........\n`);
+  console.log(`-----------MENÚ----------
+[1] Agregar tarea........
+[2] Cambira estado tarea.
+[3] Eliminar tarea.......
+[4] Mostrar tareas.......
+[5] Salir................\n`);
 }
 
-async function main() {
+// Con then() se quita la palabra 'async' de esta función main
+// async function main() {
+function main() {
   let opcion;
   let id;
   let titulo;
@@ -168,50 +168,117 @@ async function main() {
             "Por favor escriba una breve descripcion: "
           );
         }
-        await postTask({ titulo, descripcion });
-        break;
+        /** con async-await */
+        // await postTask({ titulo, descripcion });
+        // break;
+        /** con then() */
+        agregarTarea({ body: { titulo, descripcion } })
+          .then((result) => console.log(result))
+          .finally(() => main());
+        return;
 
       case 2:
-        id = readlineSync.question("Digite id de la tarea a completar: ");
-        try {
-          tarea = await getTaskById(id);
-          console.log(`Estado actual de la tarea es "${tarea.estado}"`);
-          estado = tarea.estado === COMPLETE ? NOT_COMPLETE : COMPLETE;
-          answer = readlineSync.question(
-            `Quieres cambiar el estado de la tarea a "${estado}" [S o N]? `,
-            {
-              trueValue: ["s", "si", "sip", "y", "yes", "yeah", "yep"],
-              falseValue: ["n", "no", "nop", "not", "nah", "nope"],
-            }
-          );
-          if (answer) await putTask(tarea.index, { estado });
-          else console.log("");
-        } catch (error) {
-          console.log(error);
-        }
-        break;
+        id = readlineSync.question("Digite id de la tarea a cambiar: ");
+        /** con async-await */
+        // try {
+        //   tarea = await getTaskById(id);
+        //   console.log(`Estado actual de la tarea es "${tarea.estado}"`);
+        //   estado = tarea.estado === COMPLETE ? NOT_COMPLETE : COMPLETE;
+        //   answer = readlineSync.question(
+        //     `Quieres cambiar el estado de la tarea a "${estado}" [S o N]? `,
+        //     {
+        //       trueValue: TRUE_VALUE,
+        //       falseValue: FALSE_VALUE,
+        //     }
+        //   );
+        //   if (answer) await putTask(tarea.index, { estado });
+        //   else console.log("");
+        // } catch (error) {
+        //   console.log(error);
+        // }
+        // break;
+        /** con fetch() */
+        buscarTareaPorId({ params: { id } })
+          .then((tarea) => {
+            console.log(`Estado actual de la tarea es "${tarea.estado}"`);
+            estado = tarea.estado === COMPLETE ? NOT_COMPLETE : COMPLETE;
+            answer = readlineSync.question(
+              `Quieres cambiar el estado de la tarea a "${estado}" [S o N]? `,
+              {
+                trueValue: TRUE_VALUE,
+                falseValue: FALSE_VALUE,
+              }
+            );
+            if (answer) {
+              return actualizarTarea({
+                params: { index: tarea.index },
+                body: { estado },
+              }).then((result) => result);
+            } else console.log("");
+          })
+          .then((result) => result && console.log(result))
+          .catch((error) => console.log(error))
+          .finally(() => main());
+        return;
 
       case 3:
         id = readlineSync.question("Digite id de la tarea a eliminar: ");
-        try {
-          tarea = await getTaskById(id);
-          answer = readlineSync.question(
-            "Esta seguro de eliminar la tarea [S o N]? ",
-            {
-              trueValue: ["s", "si", "sip", "y", "yes", "yeah", "yep"],
-              falseValue: ["n", "no", "nop", "not", "nah", "nope"],
-            }
-          );
-          if (answer) await deleteTask(tarea.index);
-          else console.log("");
-        } catch (error) {
-          console.log(error);
-        }
-        break;
+        /** con async-await */
+        // try {
+        //   tarea = await getTaskById(id);
+        //   answer = readlineSync.question(
+        //     "Esta seguro de eliminar la tarea [S o N]? ",
+        //     {
+        //       trueValue: TRUE_VALUE,
+        //       falseValue: FALSE_VALUE,
+        //     }
+        //   );
+        //   if (answer) await deleteTask(tarea.index);
+        //   else console.log("");
+        // } catch (error) {
+        //   console.log(error);
+        // }
+        // break;
+        /** con fech() */
+        buscarTareaPorId({ params: { id } })
+          .then((tarea) => {
+            answer = readlineSync.question(
+              "Esta seguro de eliminar la tarea [S o N]? ",
+              {
+                trueValue: TRUE_VALUE,
+                falseValue: FALSE_VALUE,
+              }
+            );
+            if (answer) {
+              return eliminarTarea({
+                params: { index: tarea.index },
+              }).then((result) => result);
+            } else console.log("");
+          })
+          .then((result) => result && console.log(result))
+          .catch((error) => console.log(error))
+          .finally(() => main());
+        return;
 
       case 4:
-        await getTasks();
-        break;
+        /** con async-await */
+        // await getTasks();
+        // break;
+        /** con fetch() */
+        listarTareas()
+          .then((tasks) => {
+            tasks.map((task, i) =>
+              console.log(
+                `${i + 1}. Id: ${task.id}, Titulo: ${
+                  task.titulo
+                }, Descripción: ${task.descripcion}, Estado: ${task.estado}`
+              )
+            );
+            console.log("");
+          })
+          .catch((error) => console.log(error))
+          .finally(() => main());
+        return;
 
       case 5:
         console.log("Saliendo del programa...");
